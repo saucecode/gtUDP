@@ -1,68 +1,3 @@
-'''
-	GTUDP  --  Guaranteed Transmission User Datagram protocol
-
-	How it works
-
-	When you send a packet, GTUDP takes a hash of it, wraps it in a frame, then sends it to its destination.
-	It will then wait for an RECV packet containing the sent packet's hash from the address it sent to.
-	When it receives the RECV packet, it will send a ACK packet with the hash, and the transaction is complete.
-
-	If the packet is sent and no RECV is received within [recv_time] seconds, the packet is transmitted again (with a new hash).
-	If the recipient sends a RECV packet, but does not receive an ACK packet in [ack_time] seconds, the RECV packet is retransmitted.
-
-	Terms:
-		RECV -- a packet sent from recipient to sender notifying that a packet was received.
-		ACK  -- a packet sent from sender to recipient notifying that a RECV packet was received.
-
-	GTUDP Frame -- Packet Type: 0x1d 0xce
-
-BYTE 0        1        2        3
-	+--------+--------+--------+--------+
-0	|        GTUDP MAGIC NUMBER         |
-	+--------+--------+--------+--------+
-4	|GTUDP MAGIC NUMBE|   PACKET TYPE   |
-	+--------+--------+--------+--------+
-8	|        PACKET IDENTITY HASH       |
-	+--------+--------+--------+--------+
-16	|               DATA                |
-	|       ...    ......     ...       |
-	+--------+--------+--------+--------+
-
-	GTUDP RECV Packet -- Packet Type: 0x5f 0x30
-
-BYTE 0        1        2        3
-	+--------+--------+--------+--------+
-0	|        GTUDP MAGIC NUMBER         |
-	+--------+--------+--------+--------+
-4	|GTUDP MAGIC NUMBE|   PACKET TYPE   |
-	+--------+--------+--------+--------+
-8	|        PACKET IDENTITY HASH       |
-	+--------+--------+--------+--------+
-
-	GTUDP ACK Packet -- Packet Type: 0xae 0xd5
-	(Same as RECV packet, but with different packet type)
-
-The GTUDP Magic Number is 0x00 0x00 0x66 0xfc 0x33 0x45
-
-A result of this is that all GTUDP packets must start with one of:
-	0x00 0x00 0x66 0xfc 0x33 0x45    0x1d 0xce
-	0x00 0x00 0x66 0xfc 0x33 0x45    0x5f 0x30
-	0x00 0x00 0x66 0xfc 0x33 0x45    0xae 0xd5
-Followed by a 4 byte hash.
-
-
-GTUDP Frame
-
-BYTE 0        1        2        3        5
-	+--------+--------+--------+--------+--------+
-	|  TYPE  |        PACKET IDENTITY HASH       |
-	+--------+--------+--------+--------+--------+
-	|                    DATA                    |
-	|                                            |
-	+--------+--------+--------+--------+--------+
-
-'''
-
 from __future__ import print_function
 
 import socket, threading, select, zlib, struct, binascii
@@ -79,9 +14,9 @@ class GTUDP:
 	def __init__(self, sock, debug=False, magic_numbers=b''):
 
 		self.magic_numbers = magic_numbers
-		self.FRAME_IDENTIFIER = b'F'
-		self.RECV_IDENTIFIER = b'R'
-		self.ACK_IDENTIFIER = b'A'
+		self.FRAME_IDENTIFIER = b'\x1d'
+		self.RECV_IDENTIFIER = b'\x5f'
+		self.ACK_IDENTIFIER = b'A\xae'
 
 		self.hexify = lambda x:binascii.hexlify(x).decode()
 
@@ -274,7 +209,6 @@ if __name__ == '__main__':
 
 		for i in range(1):
 			data, addr = udp.recvfrom(10)
-			print(len(data))
 			udp.sendto(data, addr)
 
 		udp.cleanup()
