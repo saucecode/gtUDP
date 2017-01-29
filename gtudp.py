@@ -247,8 +247,12 @@ class GTUDP:
 
 		return self.socket.sendto(packet, addr)
 
-	def recvfrom(self):
-		return self.recv_queue.get()
+	def recvfrom(self, length=None):
+		if length:
+			data, addr = self.recv_queue.get()
+			return (data[:length], addr)
+		else:
+			return self.recv_queue.get()
 
 
 	def cleanup(self):
@@ -268,9 +272,10 @@ if __name__ == '__main__':
 		udp = GTUDP(sock, debug=True)
 		udp.start()
 
-		for i in range(6):
-			data, addr = udp.recvfrom()
-			udp.sendto(b'ok, thanks!', addr)
+		for i in range(1):
+			data, addr = udp.recvfrom(10)
+			print(len(data))
+			udp.sendto(data, addr)
 
 		udp.cleanup()
 		sock.close()
@@ -282,7 +287,7 @@ if __name__ == '__main__':
 		udp = GTUDP(sock, debug=True)
 		udp.start()
 
-		for i in range(6):
+		for i in range(1):
 			udp.sendto(b'yay ' + str(time.ctime()).encode(), host)
 			data, addr = udp.recvfrom()
 
