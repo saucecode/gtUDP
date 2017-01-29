@@ -149,7 +149,7 @@ class GTUDP:
 		mn_len = len(self.magic_numbers)
 		ident_len = len(self.FRAME_IDENTIFIER)
 
-		while self.running:
+		while self.running or len(self.sent_packets) or len(self.received_packets):
 			rlist = select.select([self._socket], [], [], 0.25)[0]
 
 			if len(rlist) == 0:
@@ -250,6 +250,13 @@ class GTUDP:
 		return self.recv_queue.get()
 
 
+	def cleanup(self):
+		# start clearing the queue of sent_packets and received_packets
+		# so we can join our thread and close our socket
+		self.running = False
+		self.thread.join()
+
+
 if __name__ == '__main__':
 	import sys, socket
 
@@ -260,12 +267,11 @@ if __name__ == '__main__':
 		udp = GTUDP(sock, debug=True)
 		udp.start()
 
-		for i in range(3):
+		for i in range(6):
 			data, addr = udp.recvfrom()
 			udp.sendto(b'ok, thanks!', addr)
 
-		udp.running = False
-		udp.thread.join()
+		udp.cleanup()
 		sock.close()
 
 	elif sys.argv[1] == 'client':
@@ -275,13 +281,11 @@ if __name__ == '__main__':
 		udp = GTUDP(sock, debug=True)
 		udp.start()
 
-		for i in range(3):
+		for i in range(6):
 			udp.sendto(b'yay ' + str(time.ctime()).encode(), host)
 			data, addr = udp.recvfrom()
-			time.sleep(5)
 
-		udp.running = False
-		udp.thread.join()
+		udp.cleanup()
 		sock.close()
 
 	else:
