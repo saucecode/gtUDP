@@ -1,8 +1,8 @@
 '''
         A simple echo server
-		Waits for data from anyone, then echoes it back.
+        Waits for data from anyone, then echoes it back.
 
-		Debug messages are on in this example.
+        Debug messages are on in this example.
 '''
 
 from __future__ import print_function

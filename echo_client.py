@@ -1,9 +1,9 @@
 '''
         A simple echo client.
-		Takes one input from the user and sends it to a server.
-		Then waits for a reply from the server.
+        Takes one input from the user and sends it to a server.
+        Then waits for a reply from the server.
 
-		Debug messages are on in this example.
+        Debug messages are on in this example.
 '''
 
 from __future__ import print_function
