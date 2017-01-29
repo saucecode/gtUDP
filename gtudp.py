@@ -63,7 +63,10 @@ BYTE 0        1        2        3        5
 
 '''
 
-import socket, threading, select, zlib
+from __future__ import print_function
+
+import socket, threading, select, zlib, struct, binascii
+
 try:
 	import queue
 except ImportError:
@@ -76,9 +79,11 @@ class GTUDP:
 	def __init__(self, sock, debug=False, magic_numbers=b''):
 
 		self.magic_numbers = magic_numbers
-		self.FRAME_IDENTIFIER = b'\x1d'
-		self.RECV_IDENTIFIER = b'\x5f'
-		self.ACK_IDENTIFIER = b'\xae'
+		self.FRAME_IDENTIFIER = b'F'
+		self.RECV_IDENTIFIER = b'R'
+		self.ACK_IDENTIFIER = b'A'
+
+		self.hexify = lambda x:binascii.hexlify(x).decode()
 
 		if debug:
 
@@ -87,7 +92,7 @@ class GTUDP:
 				def __init__(self, sock, gtudp):
 					self.sock = sock
 					self.gtudp = gtudp
-					self.hexify = lambda x:''.join([ hex(i)[2:] for i in x ])
+					self.hexify = gtudp.hexify
 					self.substitutes = {
 						gtudp.FRAME_IDENTIFIER: b'FRAME',
 						gtudp.RECV_IDENTIFIER:  b'RECV ',
@@ -135,8 +140,6 @@ class GTUDP:
 		self.frame_count = 0
 
 		self.running = False
-
-		self.hexify = lambda x:''.join([ hex(i)[2:] for i in x ])
 
 
 	def start(self):
@@ -224,10 +227,8 @@ class GTUDP:
 
 	def constructFrame(self, data):
 		self.frame_count += 1
-		try:
-			identity_hash = (zlib.adler32(data) + self.frame_count).to_bytes(4, byteorder='big')
-		except AttributeError:
-			identity_hash = (zlib.adler32(data) + self.frame_count)
+		identity_hash = struct.pack('!i', zlib.adler32(data) + self.frame_count)
+
 		return (self.magic_numbers + self.FRAME_IDENTIFIER + identity_hash, identity_hash)
 
 
