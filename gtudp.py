@@ -11,7 +11,7 @@ import random, time # kek
 
 class GTUDP:
 
-	def __init__(self, sock, debug=False, magic_numbers=b'', recv_from_any=True):
+	def __init__(self, sock, debug=False, magic_numbers=b'', recv_from_any=False):
 
 		self.magic_numbers = magic_numbers
 		self.FRAME_IDENTIFIER = b'\x1d'
@@ -170,7 +170,7 @@ class GTUDP:
 
 	def constructFrame(self, data):
 		self.frame_count += 1
-		identity_hash = struct.pack('!I', zlib.adler32(data) + self.frame_count)
+		identity_hash = struct.pack('!I', (zlib.adler32(data) + self.frame_count) & 0xffffffff)
 
 		return (self.magic_numbers + self.FRAME_IDENTIFIER + identity_hash, identity_hash)
 
