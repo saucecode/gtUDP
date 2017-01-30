@@ -15,12 +15,16 @@ from gtudp import GTUDP
 server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server.bind(('localhost', 4323))
 
-udp = GTUDP(server, debug=True)
-udp.start()
 
-data, addr = udp.recvfrom(128)
-udp.sendto(data, addr)
+gtudp = GTUDP(server, debug=True)
+gtudp.start()
 
+for i in range(10):
+	data, addr = gtudp.recvfrom(128)
+	gtudp.sendto(data, addr)
+
+
+# cleanup and close socket like normal
 udp.cleanup()
 server.close()
 
