@@ -18,6 +18,9 @@ class GTUDP:
 		self.RECV_IDENTIFIER = b'\x5f'
 		self.ACK_IDENTIFIER = b'\xae'
 
+		self.data_attempts = 6 # number of times to retransmit DATA packets
+		self.recv_attempts = 10 # number of times to retransmit RECV packets
+
 		if not len(self.FRAME_IDENTIFIER) == len(self.RECV_IDENTIFIER) == len(self.ACK_IDENTIFIER):
 			raise ValueError('Identifier bytes are different lengths!')
 
@@ -100,11 +103,16 @@ class GTUDP:
 
 				# resend packets in sent_packets
 				for identity_hash in self.sent_packets:
-					self.socket.sendto( *self.sent_packets[identity_hash] )
+					self.socket.sendto( *self.sent_packets[identity_hash]['packet'] )
+					self.sent_packets[identity_hash]['sent'] += 1
+
+				self.sent_packets = { k:v for k,v in self.sent_packets.items() if v['sent'] < self.data_attempts }
 
 				# resend RECVs in received_packets
 				for identity_hash in self.received_packets:
-					self.socket.sendto( *self.received_packets[identity_hash] )
+					self.socket.sendto( *self.received_packets[identity_hash]['packet'] )
+
+				self.received_packets = { k:v for k,v in self.received_packets.items() if v['sent'] < self.recv_attempts }
 
 				continue
 
@@ -119,14 +127,14 @@ class GTUDP:
 				identity_hash = data[mn_len+ident_len:mn_len+ident_len+4]
 				# we have received the same data packet twice - retransmit RECV packet immediately
 				if identity_hash in self.received_packets:
-					if not self.received_packets[identity_hash][1] == addr: # foul play!
+					if not self.received_packets[identity_hash]['packet'][1] == addr: # foul play!
 						continue
 
-					self.socket.sendto(self.received_packets[identity_hash][0], addr)
+					self.socket.sendto(self.received_packets[identity_hash]['packet'][0], addr)
 
 				# construct and store our RECV packet
 				recv_packet = self.constructRecv(identity_hash)
-				self.received_packets[identity_hash] = ( recv_packet, addr )
+				self.received_packets[identity_hash] = {'packet':( recv_packet, addr ), 'sent':1}
 
 				# send our RECV packet
 				self.socket.sendto(recv_packet, addr)
@@ -197,7 +205,7 @@ class GTUDP:
 	def sendto(self, data, addr):
 		frame, identity_hash = self.constructFrame(data)
 		packet = frame + data
-		self.sent_packets[identity_hash] = (packet, addr)
+		self.sent_packets[identity_hash] = {'packet':(packet, addr), 'sent':1}
 
 		return self.socket.sendto(packet, addr)
 
@@ -226,7 +234,7 @@ if __name__ == '__main__':
 		udp = GTUDP(sock, debug=True)
 		udp.start()
 
-		for i in range(1):
+		for i in range(10):
 			data, addr = udp.recvfrom()
 			udp.sendto(data + b' thanks', addr)
 
@@ -240,10 +248,12 @@ if __name__ == '__main__':
 		udp = GTUDP(sock, debug=True)
 		udp.start()
 
-		for i in range(1):
+		for i in range(10):
+			time.sleep(2)
 			udp.sendto(b'yay ' + str(time.ctime()).encode(), host)
 			data, addr = udp.recvfrom()
 
+		print('attempting to stop...')
 		udp.cleanup()
 		sock.close()
 
