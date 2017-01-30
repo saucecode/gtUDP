@@ -29,10 +29,15 @@ udp.cleanup()
 server.close()
 
 ```
+### TODO
+
+ - Allow for packet exchanges to stop prematurely, if they run too long.
+ - Correctly implement accepting/sending packets from non-gtUDP sources.
+ - Implement a blocking variant of `sendto()` to return if transmission was successful.
 
 ### The inner workings
 
-DATA packet
+Default DATA packet
 
 ```
 BYTE 0        1        2        3        4
@@ -43,7 +48,7 @@ BYTE 0        1        2        3        4
     |                                            |
     +--------+--------+--------+--------+--------+
 ```
-RECV & ACK packets
+Default RECV & ACK packets
 
 ```
 BYTE 0        1        2        3        5
@@ -52,10 +57,10 @@ BYTE 0        1        2        3        5
     +--------+--------+--------+--------+--------+
 ```
 
-Packet Type Bytes are `0x1D` (DATA), `0x5F` (RECV), `0xAE` (ACK).  
-These values can be changed to anything, but they must be changed at both ends, and all three MUST have the same length.
+Default Packet Type Bytes (aka Packet Identifier Bytes) are `0x1D` (DATA), `0x5F` (RECV), `0xAE` (ACK).  
+These values can be changed to anything, with any length, but they must be changed at both ends, and all three MUST have the same length.
 
-There is also an OPTIONAL magic number setting. By default it is off. Magic numbers is a sequence of bytes added to the start of the header, and can have any length. If you wanted to have a 6 byte magic number, and 2 byte TYPEs, your packets would look like this:
+There is also an OPTIONAL magic number setting. By default it is off. The magic number is a sequence of bytes added to the start of all headers, and can have any length. If you wanted to have a 6 byte magic number, and 2 byte TYPEs, your packets would look like this:
 
 ```
 BYTE 0        1        2        3
