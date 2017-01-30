@@ -11,12 +11,15 @@ import random, time # kek
 
 class GTUDP:
 
-	def __init__(self, sock, debug=False, magic_numbers=b''):
+	def __init__(self, sock, debug=False, magic_numbers=b'', recv_from_any=True):
 
 		self.magic_numbers = magic_numbers
 		self.FRAME_IDENTIFIER = b'\x1d'
 		self.RECV_IDENTIFIER = b'\x5f'
-		self.ACK_IDENTIFIER = b'A\xae'
+		self.ACK_IDENTIFIER = b'\xae'
+		self.identifiers = (self.FRAME_IDENTIFIER, self.RECV_IDENTIFIER, self.ACK_IDENTIFIER)
+
+		self.recv_from_any = recv_from_any
 
 		self.hexify = lambda x:binascii.hexlify(x).decode()
 
@@ -38,9 +41,7 @@ class GTUDP:
 					mn_len = len(self.gtudp.magic_numbers)
 					ident_len = len(self.gtudp.RECV_IDENTIFIER)
 
-					packet_type = self.substitutes[
-						data[ mn_len : mn_len + ident_len ]
-					] or b'!?!! '
+					packet_type = self.substitutes.get(data[mn_len:mn_len + ident_len], b'!?!! ')
 
 					print('OUT',
 						packet_type.decode(),
@@ -54,7 +55,8 @@ class GTUDP:
 					ident_len = len(self.gtudp.RECV_IDENTIFIER)
 
 					data, addr = self.sock.recvfrom(length)
-					packet_type = self.substitutes[data[mn_len:mn_len + ident_len]] or b'!?!! '
+
+					packet_type = self.substitutes.get(data[mn_len:mn_len + ident_len], b'!?!! ')
 					print('IN ',
 						packet_type.decode(),
 						self.hexify(data[mn_len + ident_len:mn_len + ident_len + 4]),
@@ -105,11 +107,12 @@ class GTUDP:
 			data, addr = self.socket.recvfrom(65535)
 
 			if not data[:mn_len] == self.magic_numbers:
+				if self.recv_from_any:
+					self.recv_queue.put( (data,addr) )
 				continue
 
 			if data[mn_len:mn_len+ident_len] == self.FRAME_IDENTIFIER:                # DATA packet
 				identity_hash = data[mn_len+ident_len:mn_len+ident_len+4]
-
 				# we have received the same data packet twice - retransmit RECV packet immediately
 				if identity_hash in self.received_packets:
 					if not self.received_packets[identity_hash][1] == addr: # foul play!
@@ -148,6 +151,7 @@ class GTUDP:
 				# TODO SCHEDULE THIS LATER ?
 				del self.sent_packets[identity_hash]
 
+
 			elif data[mn_len:mn_len+ident_len] == self.ACK_IDENTIFIER:                 # ACK packet
 				# stop sending recv packets
 
@@ -159,10 +163,14 @@ class GTUDP:
 				del self.received_packets[identity_hash]
 
 
+			elif self.recv_from_any:
+				self.recv_queue.put( (data,addr) )
+
+
 
 	def constructFrame(self, data):
 		self.frame_count += 1
-		identity_hash = struct.pack('!i', zlib.adler32(data) + self.frame_count)
+		identity_hash = struct.pack('!I', zlib.adler32(data) + self.frame_count)
 
 		return (self.magic_numbers + self.FRAME_IDENTIFIER + identity_hash, identity_hash)
 
@@ -174,6 +182,13 @@ class GTUDP:
 	def constructAck(self, identity_hash):
 		return self.magic_numbers + self.ACK_IDENTIFIER + identity_hash
 
+	def isValidPacket(self, packet):
+		mn_len = len(self.magic_numbers)
+		ident_len = len(self.FRAME_IDENTIFIER)
+		return all([
+			packet[:mn_len] == self.magic_numbers,
+			packet[mn_len:mn_len+ident_len] in self.identifiers
+		])
 
 	def sendto(self, data, addr):
 		frame, identity_hash = self.constructFrame(data)
@@ -208,8 +223,8 @@ if __name__ == '__main__':
 		udp.start()
 
 		for i in range(1):
-			data, addr = udp.recvfrom(10)
-			udp.sendto(data, addr)
+			data, addr = udp.recvfrom()
+			udp.sendto(data + b' thanks', addr)
 
 		udp.cleanup()
 		sock.close()
