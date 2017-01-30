@@ -17,6 +17,10 @@ class GTUDP:
 		self.FRAME_IDENTIFIER = b'\x1d'
 		self.RECV_IDENTIFIER = b'\x5f'
 		self.ACK_IDENTIFIER = b'\xae'
+
+		if not len(self.FRAME_IDENTIFIER) == len(self.RECV_IDENTIFIER) == len(self.ACK_IDENTIFIER):
+			raise ValueError('Identifier bytes are different lengths!')
+
 		self.identifiers = (self.FRAME_IDENTIFIER, self.RECV_IDENTIFIER, self.ACK_IDENTIFIER)
 
 		self.recv_from_any = recv_from_any
