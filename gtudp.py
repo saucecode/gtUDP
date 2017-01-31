@@ -85,6 +85,9 @@ class GTUDP:
 
 		self.running = False
 
+		self.blocking = True
+		self.recv_timeout = None
+
 
 	def start(self):
 		self.thread = threading.Thread(target=self.run)
@@ -211,17 +214,22 @@ class GTUDP:
 
 	def recvfrom(self, length=None):
 		if length:
-			data, addr = self.recv_queue.get()
+			data, addr = self.recv_queue.get(self.blocking, self.recv_timeout)
 			return (data[:length], addr)
 		else:
-			return self.recv_queue.get()
-
+			return self.recv_queue.get(self.blocking, self.recv_timeout)
 
 	def cleanup(self):
 		# start clearing the queue of sent_packets and received_packets
 		# so we can join our thread and close our socket
 		self.running = False
 		self.thread.join()
+
+	def settimeout(self, seconds):
+		self.recv_timeout = seconds
+
+	def setblocking(self, should_block):
+		self.blocking = should_block
 
 
 if __name__ == '__main__':
@@ -234,7 +242,7 @@ if __name__ == '__main__':
 		udp = GTUDP(sock, debug=True)
 		udp.start()
 
-		for i in range(10):
+		for i in range(3):
 			data, addr = udp.recvfrom()
 			udp.sendto(data + b' thanks', addr)
 
@@ -247,8 +255,9 @@ if __name__ == '__main__':
 
 		udp = GTUDP(sock, debug=True)
 		udp.start()
+		udp.settimeout(3)
 
-		for i in range(10):
+		for i in range(3):
 			time.sleep(2)
 			udp.sendto(b'yay ' + str(time.ctime()).encode(), host)
 			data, addr = udp.recvfrom()
