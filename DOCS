@@ -13,7 +13,11 @@ magic_numbers:  A string of bytes part of gtUDP's header. This can be empty.
 recv_from_any:  Enable reception and transmission of datagrams. (Not yet implemented)
 
 A note on recv_from_any:
-This greatly changes the behavior of GTUDP. When set to True, it accepts non-compliant packets, and will queue them to be received in GTUDP.recvfrom(). GTUDP.recvfrom() will also now return an extra bool: a flag telling you if the packet originated from a GTUDP socket. When the extra flag is passed into GTUDP.sendto(), packets may be sent directly through the socket.
+This greatly changes the behavior of GTUDP. When set to True, it accepts
+non-compliant packets, and will queue them to be received in GTUDP.recvfrom().
+GTUDP.recvfrom() will also now return an extra bool: a flag telling you if the
+packet originated from a GTUDP socket. When the extra flag is passed into
+GTUDP.sendto(), packets may be sent directly through the socket.
 
 recv_from_any is not yet implemented.
 
@@ -24,14 +28,17 @@ recv_from_any is not yet implemented.
 
 Creates and starts the listen thread.
 
-The listen thread will listen for packets, process, and queue them for receiving. It is also responsible for retransmitting dropped (or presumed dropped) packets. This thread is stopped by calling GTUDP.cleanup().
+The listen thread will listen for packets, process, and queue them for
+receiving. It is also responsible for retransmitting dropped (or presumed
+dropped) packets. This thread is stopped by calling GTUDP.cleanup().
 
 
 
 
 	isValidPacket(self, packet)
 
-Checks the first bytes of packet to see if they match this GTUDP instance's identifier bytes and magic numbers, as well as being of the minimum length.
+Checks the first bytes of packet to see if they match this GTUDP instance's
+identifier bytes and magic numbers, as well as being of the minimum length.
 
 Returns True if the packet passes these checks.
 
@@ -54,16 +61,21 @@ This function mimics the behavior of socket.sendto(data, addr).
 
 Get a packet of maximum length `length`.
 
-By default, this function blocks until a packet is received. This behavior can be changed by setting GTUDP.setblocking() and GTUDP.settimeout().
+By default, this function blocks until a packet is received. This behavior can
+be changed by setting GTUDP.setblocking() and GTUDP.settimeout().
 
-Returns a tuple pair of (data, addr), or raises a queue.Empty error if the timeout is reached, or if blocking is disabled and there is no packet to read.
+Returns a tuple pair of (data, addr), or raises a queue.Empty error if the
+timeout is reached, or if blocking is disabled and there is no packet to read.
 
 
 
 
 	cleanup(self)
 
-Tell the listen thread to cleanup and stop. This function blocks until its outgoing queues are empty. The outgoing queues (data packets and RECV acknowledgement packets) are sent until they are either acknowledged or reach their retransmission limits.
+Tell the listen thread to cleanup and stop. This function blocks until its
+outgoing queues are empty. The outgoing queues (data packets and RECV
+acknowledgement packets) are sent until they are either acknowledged or reach
+their retransmission limits.
 
 
 
@@ -89,7 +101,10 @@ Internal Data Structures
 
 
 GTUDP.sent_packets = {}
-This is a dictionary. The keys are individual packet identity hashes. The values are also dicts. The values have two keys, 'packet' and 'sent'. 'packet' is a tuple of the full packet with header, and 'sent' is the number of times it has been sent.
+This is a dictionary. The keys are individual packet identity hashes. The values
+are also dicts. The values have two keys, 'packet' and 'sent'. 'packet' is a
+tuple of the full packet with header, and 'sent' is the number of times it has
+been sent.
 
 Example:
 
