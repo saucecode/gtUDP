@@ -1,0 +1,106 @@
+
+GTUDP Functions
+
+
+
+	__init__(self, sock, debug=False, magic_numbers=b'', recv_from_any=False)
+
+The GTUDP constructor
+
+sock:           A Python socket spawned as socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+debug:          Enables traffic logging.
+magic_numbers:  A string of bytes part of gtUDP's header. This can be empty.
+recv_from_any:  Enable reception and transmission of datagrams. (Not yet implemented)
+
+A note on recv_from_any:
+This greatly changes the behavior of GTUDP. When set to True, it accepts non-compliant packets, and will queue them to be received in GTUDP.recvfrom(). GTUDP.recvfrom() will also now return an extra bool: a flag telling you if the packet originated from a GTUDP socket. When the extra flag is passed into GTUDP.sendto(), packets may be sent directly through the socket.
+
+recv_from_any is not yet implemented.
+
+
+
+
+	start(self)
+
+Creates and starts the listen thread.
+
+The listen thread will listen for packets, process, and queue them for receiving. It is also responsible for retransmitting dropped (or presumed dropped) packets. This thread is stopped by calling GTUDP.cleanup().
+
+
+
+
+	isValidPacket(self, packet)
+
+Checks the first bytes of packet to see if they match this GTUDP instance's identifier bytes and magic numbers, as well as being of the minimum length.
+
+Returns True if the packet passes these checks.
+
+
+
+
+	sendto(self, data, addr)
+
+Send a GTUDP packet to addr.
+
+	data:  The bytes to send to addr. Can be empty.
+	addr:  An ip address and port pair.
+
+This function mimics the behavior of socket.sendto(data, addr).
+
+
+
+
+	recvfrom(self, length)
+
+Get a packet of maximum length `length`.
+
+By default, this function blocks until a packet is received. This behavior can be changed by setting GTUDP.setblocking() and GTUDP.settimeout().
+
+Returns a tuple pair of (data, addr), or raises a queue.Empty error if the timeout is reached, or if blocking is disabled and there is no packet to read.
+
+
+
+
+	cleanup(self)
+
+Tell the listen thread to cleanup and stop. This function blocks until its outgoing queues are empty. The outgoing queues (data packets and RECV acknowledgement packets) are sent until they are either acknowledged or reach their retransmission limits.
+
+
+
+
+	settimeout(self, seconds)
+
+Changes GTUDP.recvfrom() to block for a maximum of `seconds` seconds.
+
+This setting has no effect if blocking is set to False.
+
+
+
+
+	setblocking(self, should_block)
+
+Toggle blocking on GTUDP.recvfrom() calls.
+
+
+
+
+
+Internal Data Structures
+
+
+GTUDP.sent_packets = {}
+This is a dictionary. The keys are individual packet identity hashes. The values are also dicts. The values have two keys, 'packet' and 'sent'. 'packet' is a tuple of the full packet with header, and 'sent' is the number of times it has been sent.
+
+Example:
+
+sent_packets = {
+	'75790714' : {
+		'packet': ('\x1d\x75\x79\x07\x14Hello, world!', ('127.0.0.1', 4545)),
+		'sent': 3
+	},
+
+	'b09e09c1' : {
+		'packet': ('\x1d\xb0\x9e\x09\xc1Please help I\'m trapped in a comp-', ('127.0.0.1', 52316)),
+		'sent': 1
+	}
+}
