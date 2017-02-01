@@ -81,7 +81,7 @@ class GTUDP:
 		self.recv_queue = queue.Queue()
 		self.received_packets = {} # {'identity hash': (RECV packet, peer address)}
 
-		self.frame_count = 0
+		self.frame_count = random.getrandbits(32)
 
 		self.running = False
 
@@ -100,7 +100,7 @@ class GTUDP:
 		ident_len = len(self.FRAME_IDENTIFIER)
 
 		while self.running or len(self.sent_packets) or len(self.received_packets):
-			rlist = select.select([self._socket], [], [], 0.25)[0]
+			rlist = select.select([self._socket], [], [], 0.5)[0]
 
 			if len(rlist) == 0:
 
@@ -114,6 +114,8 @@ class GTUDP:
 				# resend RECVs in received_packets
 				for identity_hash in self.received_packets:
 					self.socket.sendto( *self.received_packets[identity_hash]['packet'] )
+					self.received_packets[identity_hash]['sent'] += 1
+
 
 				self.received_packets = { k:v for k,v in self.received_packets.items() if v['sent'] < self.recv_attempts }
 
@@ -128,6 +130,7 @@ class GTUDP:
 
 			if data[mn_len:mn_len+ident_len] == self.FRAME_IDENTIFIER:                # DATA packet
 				identity_hash = data[mn_len+ident_len:mn_len+ident_len+4]
+				is_repeated_packet = identity_hash in self.recieved_history
 				# we have received the same data packet twice - retransmit RECV packet immediately
 				if identity_hash in self.received_packets:
 					if not self.received_packets[identity_hash]['packet'][1] == addr: # foul play!
@@ -135,15 +138,16 @@ class GTUDP:
 
 					self.socket.sendto(self.received_packets[identity_hash]['packet'][0], addr)
 
+				# queue the data in the packet to be given to the user
+				if not identity_hash in self.received_packets:
+					self.recv_queue.put( (data[mn_len+ident_len+4:], addr) )
+
 				# construct and store our RECV packet
 				recv_packet = self.constructRecv(identity_hash)
 				self.received_packets[identity_hash] = {'packet':( recv_packet, addr ), 'sent':1}
 
 				# send our RECV packet
 				self.socket.sendto(recv_packet, addr)
-
-				# queue the data in the packet to be given to the user
-				self.recv_queue.put( (data[mn_len+ident_len+4:], addr) )
 
 
 			elif data[mn_len:mn_len+ident_len] == self.RECV_IDENTIFIER:               # RECV packet
@@ -237,7 +241,7 @@ if __name__ == '__main__':
 
 	if sys.argv[1] == 'server':
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sock.bind(('localhost', 4323))
+		sock.bind(('0.0.0.0', 4323))
 
 		udp = GTUDP(sock, debug=True)
 		udp.start()
@@ -251,11 +255,11 @@ if __name__ == '__main__':
 
 	elif sys.argv[1] == 'client':
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		host = ('localhost', 4323)
+		host = (sys.argv[2], 4323)
+		#sock.connect(host)
 
 		udp = GTUDP(sock, debug=True)
 		udp.start()
-		udp.settimeout(3)
 
 		for i in range(3):
 			time.sleep(2)
