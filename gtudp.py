@@ -53,7 +53,7 @@ class GTUDP:
 					print('OUT',
 						packet_type.decode(),
 						self.hexify(data[mn_len + ident_len:mn_len + ident_len + 4]),
-						data[mn_len + ident_len + 4:].decode('utf-8', 'replace')
+						repr(data[mn_len + ident_len + 4:])
 					)
 					return self.sock.sendto(data, addr)
 
@@ -67,7 +67,7 @@ class GTUDP:
 					print('IN ',
 						packet_type.decode(),
 						self.hexify(data[mn_len + ident_len:mn_len + ident_len + 4]),
-						data[mn_len + ident_len + 4:].decode('utf-8', 'replace')
+						repr(data[mn_len + ident_len + 4:])
 					)
 					return data, addr
 
@@ -130,7 +130,6 @@ class GTUDP:
 
 			if data[mn_len:mn_len+ident_len] == self.FRAME_IDENTIFIER:                # DATA packet
 				identity_hash = data[mn_len+ident_len:mn_len+ident_len+4]
-				is_repeated_packet = identity_hash in self.recieved_history
 				# we have received the same data packet twice - retransmit RECV packet immediately
 				if identity_hash in self.received_packets:
 					if not self.received_packets[identity_hash]['packet'][1] == addr: # foul play!
